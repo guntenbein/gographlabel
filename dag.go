@@ -6,38 +6,113 @@ import (
 	"time"
 )
 
+type Label struct {
+	Name string
+}
+
+type LabelEnum map[Label]struct{}
+
+func (le LabelEnum) Contains(l Label) bool {
+	_, ok := le[l]
+	return ok
+}
+
 type Vertex struct {
 	Type     string
 	Parent   *Vertex
-	Children []Vertex
-	Labels   []string
+	Children []*Vertex
+	Labels   LabelEnum
 }
 
-type Rule struct {
-	Name           string
-	Up             bool
-	Recursive      bool
-	ConditionType  string
-	ConditionLabel string
-	ResultLabel    string
+type Rule interface {
+	ApplyRule(toVertex *Vertex) bool
 }
 
-func (v *Vertex) Contains(label string) bool {
-	for _, l := range v.Labels {
-		if l == label {
+type ParentRule struct {
+	Name         string
+	Recursive    bool
+	CurrentType  string
+	CurrentLabel string
+	ParentType   string
+	ParentLabel  string
+	ResultLabel  string
+}
+
+func (pr *ParentRule) ApplyRule(v *Vertex) bool {
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Minute)
+	if pr.CurrentType != "" && pr.CurrentType != v.Type {
+		return false
+	}
+	if pr.CurrentLabel != "" && !v.Labels.Contains(Label{pr.CurrentLabel}) {
+		return false
+	}
+	for p := v.Parent; p != nil; {
+		if p.Contains(pr.ParentLabel) && p.Type == pr.ParentType {
+			v.Labels[Label{pr.ResultLabel}] = struct{}{}
 			return true
+		}
+		if !pr.Recursive {
+			return false
+		}
+		p = p.Parent
+		select {
+		case <-ctx.Done():
+			fmt.Println("exit because of timeout - probable loop for the rule application")
+			break
+		default:
 		}
 	}
 	return false
 }
 
+type ChildRule struct {
+	Name         string
+	Recursive    bool
+	CurrentType  string
+	CurrentLabel string
+	ChildType    string
+	ChildLabel   string
+	ResultLabel  string
+}
+
+func (chr *ChildRule) ApplyRule(v *Vertex) bool {
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Minute)
+	if chr.CurrentType != "" && chr.CurrentType != v.Type {
+		return false
+	}
+	if chr.CurrentLabel != "" && !v.Labels.Contains(Label{chr.CurrentLabel}) {
+		return false
+	}
+	// TODO change it to be really recursive
+	for p := v.Parent; p != nil; {
+		if p.Contains(chr.ChildLabel) && p.Type == chr.ChildType {
+			v.Labels[Label{chr.ResultLabel}] = struct{}{}
+			return true
+		}
+		if !chr.Recursive {
+			return false
+		}
+		p = p.Parent
+		select {
+		case <-ctx.Done():
+			fmt.Println("exit because of timeout - probable loop for the rule application")
+			break
+		default:
+		}
+	}
+	return false
+}
+
+func (v *Vertex) Contains(label string) bool {
+	v.Labels.Contains(Label{label})
+	return false
+}
+
 func (v *Vertex) ApplyRules(rr ...Rule) {
+	// TODO to think about timeout more
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Minute)
 	for {
-		ruleApplied := false
-		for _, r := range rr {
-			ruleApplied = ruleApplied || v.applyRule(r)
-		}
+		ruleApplied := v.applyRulesOnce(rr...)
 		if !ruleApplied {
 			break
 		}
@@ -50,26 +125,13 @@ func (v *Vertex) ApplyRules(rr ...Rule) {
 	}
 }
 
-func (v *Vertex) applyRule(r Rule) bool {
-	if r.Up {
-		if r.Recursive {
-			for p := v.Parent; p != nil; {
-				if v.applyParent(r, p) {
-					return true
-				}
-			}
-		}
-		return v.applyParent(r, v.Parent)
+func (v *Vertex) applyRulesOnce(rr ...Rule) bool {
+	ruleApplied := false
+	for _, r := range rr {
+		ruleApplied = ruleApplied || r.ApplyRule(v)
 	}
-	// TODO down part
-	return true
-}
-
-func (v *Vertex) applyParent(r Rule, parent *Vertex) bool {
-	if parent.Contains(r.ConditionLabel) && parent.Type == r.ConditionType {
-		v.Labels = append(v.Labels, r.ResultLabel)
-		fmt.Printf("applied rule %s for the vertex %+v because of vertext %+v \n", r.Name, v, parent)
-		return true
+	for _, cv := range v.Children {
+		ruleApplied = ruleApplied || cv.applyRulesOnce()
 	}
-	return false
+	return ruleApplied
 }
