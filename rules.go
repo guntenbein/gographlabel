@@ -14,6 +14,8 @@ type ParentRule struct {
 	ResultLabel  string
 }
 
+var LOOP_IN_HIERARCHY_ERROR = errors.New("loops are not allowed in hierarchy")
+
 func (pr *ParentRule) ApplyRule(v *Vertex) (bool, error) {
 	if pr.CurrentType != "" && pr.CurrentType != v.Type {
 		return false, nil
@@ -25,7 +27,7 @@ func (pr *ParentRule) ApplyRule(v *Vertex) (bool, error) {
 	exploredVertexes[v] = struct{}{}
 	for p := v.Parent; p != nil; {
 		if _, ok := exploredVertexes[p]; !ok {
-			return false, errors.New("loops are not allowed in hierarchy")
+			return false, LOOP_IN_HIERARCHY_ERROR
 		}
 		exploredVertexes[p] = struct{}{}
 		if checkTypeLabelAndApplyLabel(v, p, pr.ParentLabel, pr.ParentType, pr.ResultLabel) {
@@ -70,23 +72,27 @@ func (chr *ChildRule) ApplyRule(v *Vertex) (bool, error) {
 
 	queue := []*Vertex{}
 	queue = append(queue, v)
-	return chr.BFS(v, queue), nil
+	return chr.bfs(v, queue, exploredVertexes)
 }
 
-func (chr *ChildRule) BFS(initialV *Vertex, queue []*Vertex) bool {
-	//This appends the value of the root of subtree or tree to the
-	//result
+// bfs - recursive function for implementing bfs for our hierarchy
+// TODO - workers
+func (chr *ChildRule) bfs(initialV *Vertex, queue []*Vertex, exploredVertexes map[VertexData]struct{}) (bool, error) {
+	//This appends the value of the root of subtree or tree to the result
 	if len(queue) == 0 {
-		return false
+		return false, nil
 	}
 	currentV := queue[0]
+	if _, ok := exploredVertexes[currentV.VertexData]; ok {
+		return false, LOOP_IN_HIERARCHY_ERROR
+	}
 	if checkTypeLabelAndApplyLabel(initialV, currentV, chr.ChildLabel, chr.ChildType, chr.ResultLabel) {
-		return true
+		return true, nil
 	}
 	if len(currentV.Children) > 0 {
 		queue = append(queue, currentV.Children...)
 	}
-	return chr.BFS(initialV, queue[1:])
+	return chr.bfs(initialV, queue[1:], exploredVertexes)
 }
 
 func checkTypeLabelAndApplyLabel(v *Vertex, r *Vertex, rLabel, rType, tobeLabel string) bool {
