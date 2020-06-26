@@ -1,10 +1,7 @@
 package gographlabel
 
 import (
-	"context"
 	"errors"
-	"fmt"
-	"time"
 )
 
 type ParentRule struct {
@@ -18,7 +15,6 @@ type ParentRule struct {
 }
 
 func (pr *ParentRule) ApplyRule(v *Vertex) (bool, error) {
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Minute)
 	if pr.CurrentType != "" && pr.CurrentType != v.Type {
 		return false, nil
 	}
@@ -39,12 +35,6 @@ func (pr *ParentRule) ApplyRule(v *Vertex) (bool, error) {
 			return false, nil
 		}
 		p = p.Parent
-		select {
-		case <-ctx.Done():
-			fmt.Println("exit because of timeout - probable loop for the rule application")
-			break
-		default:
-		}
 	}
 	return false, nil
 }
@@ -60,36 +50,43 @@ type ChildRule struct {
 }
 
 func (chr *ChildRule) ApplyRule(v *Vertex) (bool, error) {
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Minute)
 	if chr.CurrentType != "" && chr.CurrentType != v.Type {
 		return false, nil
 	}
 	if chr.CurrentLabel != "" && !v.Labels.Contains(Label{chr.CurrentLabel}) {
 		return false, nil
 	}
-	exploredVertexes := make(map[*Vertex]struct{})
-	exploredVertexes[v] = struct{}{}
-	// TODO complete it
-	for p := v.Parent; p != nil; {
-		if _, ok := exploredVertexes[p]; !ok {
-			return false, errors.New("loops are not allowed in hierarchy")
-		}
-		exploredVertexes[p] = struct{}{}
-		if checkTypeLabelAndApplyLabel(v, p, chr.ChildLabel, chr.ChildType, chr.ResultLabel) {
-			return true, nil
-		}
-		if !chr.Recursive {
-			return false, nil
-		}
-		p = p.Parent
-		select {
-		case <-ctx.Done():
-			fmt.Println("exit because of timeout - probable loop for the rule application")
-			break
-		default:
+
+	if !chr.Recursive {
+		for i, _ := range v.Children {
+			if checkTypeLabelAndApplyLabel(v, v.Children[i], chr.CurrentLabel, chr.ChildType, chr.ResultLabel) {
+				return true, nil
+			}
 		}
 	}
-	return false, nil
+	// TODO comparison operations for Vertex !!!!
+	exploredVertexes := make(map[VertexData]struct{})
+	exploredVertexes[v.VertexData] = struct{}{}
+
+	queue := []*Vertex{}
+	queue = append(queue, v)
+	return chr.BFS(v, queue), nil
+}
+
+func (chr *ChildRule) BFS(initialV *Vertex, queue []*Vertex) bool {
+	//This appends the value of the root of subtree or tree to the
+	//result
+	if len(queue) == 0 {
+		return false
+	}
+	currentV := queue[0]
+	if checkTypeLabelAndApplyLabel(initialV, currentV, chr.ChildLabel, chr.ChildType, chr.ResultLabel) {
+		return true
+	}
+	if len(currentV.Children) > 0 {
+		queue = append(queue, currentV.Children...)
+	}
+	return chr.BFS(initialV, queue[1:])
 }
 
 func checkTypeLabelAndApplyLabel(v *Vertex, r *Vertex, rLabel, rType, tobeLabel string) bool {

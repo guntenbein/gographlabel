@@ -12,10 +12,15 @@ func (le LabelEnum) Contains(l Label) bool {
 }
 
 type Vertex struct {
-	Type     string
+	VertexData
+	Labels   LabelEnum
 	Parent   *Vertex
 	Children []*Vertex
-	Labels   LabelEnum
+}
+
+type VertexData struct {
+	ID   string
+	Type string
 }
 
 func (v *Vertex) Contains(label string) bool {
