@@ -1,0 +1,4 @@
+github.com/guntenbein/gojsonut v0.0.0-20200618062050-35e57f612072 h1:tfv4p3RfdHDF+enQK8c3VWzcOULaOjSvpKn7zl0K90I=
+github.com/guntenbein/gojsonut v0.0.0-20200618062050-35e57f612072/go.mod h1:EdwglMMENZTnpUVsnCTMD7WphoWCcrDX8hcX2QCN2Kc=
+github.com/nsf/jsondiff v0.0.0-20200515183724-f29ed568f4ce h1:RPclfga2SEJmgMmz2k+Mg7cowZ8yv4Trqw9UsJby758=
+github.com/nsf/jsondiff v0.0.0-20200515183724-f29ed568f4ce/go.mod h1:uFMI8w+ref4v2r9jz+c9i1IfIttS/OkmLfrk1jne5hs=

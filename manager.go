@@ -1,50 +1,53 @@
 package gographlabel
 
-import (
-	"context"
-	"fmt"
-	"time"
-)
-
 type Rule interface {
 	ApplyRule(toVertex *Vertex) (bool, error)
 }
 
-func ApplyRules(v *Vertex, rr ...Rule) error {
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Minute)
-	for {
-		ruleApplied, err := applyRulesOnce(v, rr...)
+type Ruler map[string][]Rule
+
+func (rr Ruler) Add(action string, rules ...Rule) {
+	if len(rules) == 0 {
+		return
+	}
+	storedRules, ok := rr[action]
+	if !ok {
+		storedRules = make([]Rule, 0)
+	}
+	storedRules = append(storedRules, rules...)
+	rr[action] = storedRules
+}
+
+type Manager struct {
+	ruler Ruler
+}
+
+func MakeManager(ruler Ruler) Manager {
+	return Manager{ruler}
+}
+
+func (m Manager) CalculateBlocks(hierarchy *Vertex, orders ...BlockOrder) error {
+	// todo provide in more functional way - copy the hierarchy and output the changed copied version
+	for _, o := range orders {
+		rules := m.ruler[o.Action]
+		if rules == nil || len(rules) == 0 {
+			continue
+		}
+		orderedVertex, err := hierarchy.FindById(o.ID)
 		if err != nil {
 			return err
 		}
-		if !ruleApplied {
-			break
+		if orderedVertex == nil {
+			continue
 		}
-		select {
-		case <-ctx.Done():
-			fmt.Println("exit because of timeout - probable loop for the rules application")
-			break
-		default:
+		for _, r := range rules {
+			r.ApplyRule(orderedVertex)
 		}
 	}
 	return nil
 }
 
-func applyRulesOnce(v *Vertex, rr ...Rule) (bool, error) {
-	ruleApplied := false
-	for _, r := range rr {
-		applied, err := r.ApplyRule(v)
-		if err != nil {
-			return false, err
-		}
-		ruleApplied = ruleApplied || applied
-	}
-	for _, cv := range v.Children {
-		applied, err := applyRulesOnce(cv, rr...)
-		if err != nil {
-			return false, err
-		}
-		ruleApplied = ruleApplied || applied
-	}
-	return ruleApplied, nil
+type BlockOrder struct {
+	Action string
+	ID     string
 }
