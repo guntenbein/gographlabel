@@ -1,7 +1,7 @@
 package gographlabel
 
 type Vertex struct {
-	VertexData   `json:"node"`
+	VertexData   `json:"data"`
 	LabelStorage `json:"labels"`
 	Parent       *Vertex   `json:"-"`
 	Children     []*Vertex `json:"children"`

@@ -91,6 +91,9 @@ func (r BrotherVertexLabelingRule) ApplyRule(v *Vertex) (bool, error) {
 	}); err != nil {
 		return false, err
 	}
+	if parent == nil {
+		return false, nil
+	}
 	markChildrenRule := ChildrenVertexLabelingRule{"internal for BrotherVertexLabelingRule", r.ParentType, r.BrotherType, r.ResultLabel}
 	return markChildrenRule.ApplyRule(parent)
 }
