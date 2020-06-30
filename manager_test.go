@@ -70,7 +70,6 @@ func TestBlockUploadChannelByDefaultAction(t *testing.T) {
 
 func TestBlockListingByDefaultAction(t *testing.T) {
 	company, manager := initSimpleDefault()
-	// TODO add the brothers rule and correct the contract
 	expected := `
 {  
 "node": {
@@ -103,7 +102,9 @@ func TestBlockListingByDefaultAction(t *testing.T) {
             "id": "4",
             "type": "LISTING"
           },
-          "labels": {},
+          "labels": {
+            "default": {}
+          },
           "children": null
         },
         {
@@ -111,7 +112,9 @@ func TestBlockListingByDefaultAction(t *testing.T) {
             "id": "5",
             "type": "HOLD"
           },
-          "labels": {},
+          "labels": {
+            "default": {}
+          },
           "children": null
         }
       ]
@@ -135,6 +138,7 @@ func initSimpleDefault() (*Vertex, Manager) {
 		CurrentVertexLabelingRule{"If current node actioned default => current node has label 'default'", "", Default},
 		ChildrenVertexLabelingRule{"If UPLOAD_CHANNEL actioned default => all children groups has label 'default'", "UPLOAD_CHANNEL", "", Default},
 		ParentVertexLabelingRule{"If a group actioned default => it's UPLOAD_CHANNEL will have label 'default'", "", "UPLOAD_CHANNEL", Default},
+		BrotherVertexLabelingRule{"If a LISTING actioned default => other listings for the same UPLOAD_CHANNEL labeled default", "", "UPLOAD_CHANNEL", "", Default},
 	)
 
 	manager := MakeManager(ruler)

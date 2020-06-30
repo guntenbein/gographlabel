@@ -65,3 +65,32 @@ func (r ChildrenVertexLabelingRule) ApplyRule(v *Vertex) (bool, error) {
 	}
 	return applied, nil
 }
+
+type BrotherVertexLabelingRule struct {
+	Name        string
+	CurrentType string
+	ParentType  string
+	BrotherType string
+	ResultLabel string
+}
+
+func (r BrotherVertexLabelingRule) ApplyRule(v *Vertex) (bool, error) {
+	if r.CurrentType != "" && r.CurrentType != v.Type {
+		return false, nil
+	}
+	// Find right parent
+	var parent *Vertex
+	if err := v.ApplyParents(func(visitedVertex *Vertex) {
+		if visitedVertex == nil || visitedVertex == v {
+			return
+		}
+		if r.ParentType == "" || visitedVertex.Type == r.ParentType {
+			parent = visitedVertex
+			return
+		}
+	}); err != nil {
+		return false, err
+	}
+	markChildrenRule := ChildrenVertexLabelingRule{"internal for BrotherVertexLabelingRule", r.ParentType, r.BrotherType, r.ResultLabel}
+	return markChildrenRule.ApplyRule(parent)
+}
