@@ -6,15 +6,16 @@ type CurrentVertexLabelingRule struct {
 	Name        string
 	CurrentType string
 	ResultLabel string
+	Exclusive   bool
 }
 
 func (r CurrentVertexLabelingRule) ApplyRule(v *Vertex, cID string) (bool, error) {
 	if r.CurrentType != "" && r.CurrentType != v.Type {
 		return false, nil
 	}
-	if !v.Reserve(r.ResultLabel, cID) {
-		return false, fmt.Errorf("vertex '%s' already labeled by '%s' for correlationID '%s'",
-			v.ID, r.ResultLabel, v.MustGet(r.ResultLabel))
+	if !v.ReserveBlock(r.ResultLabel, cID, r.Exclusive) {
+		return false, fmt.Errorf("vertex '%s' already labeled by '%s' for correlationIDs '%v'",
+			v.ID, r.ResultLabel, v.GetBlock(r.ResultLabel))
 	}
 	return true, nil
 }
@@ -24,6 +25,7 @@ type ParentVertexLabelingRule struct {
 	CurrentType string
 	ParentType  string
 	ResultLabel string
+	Exclusive   bool
 }
 
 func (r ParentVertexLabelingRule) ApplyRule(v *Vertex, cID string) (bool, error) {
@@ -36,9 +38,9 @@ func (r ParentVertexLabelingRule) ApplyRule(v *Vertex, cID string) (bool, error)
 			return nil
 		}
 		if r.ParentType == "" || visitedVertex.Type == r.ParentType {
-			if !visitedVertex.Reserve(r.ResultLabel, cID) {
-				return fmt.Errorf("vertex '%s' already labeled by '%s' for correlationID '%s'",
-					visitedVertex.ID, r.ResultLabel, v.MustGet(r.ResultLabel))
+			if !visitedVertex.ReserveBlock(r.ResultLabel, cID, r.Exclusive) {
+				return fmt.Errorf("vertex '%s' already labeled by '%s' for correlationIDs '%v'",
+					visitedVertex.ID, r.ResultLabel, v.GetBlock(r.ResultLabel))
 			}
 			applied = true
 		}
@@ -54,6 +56,7 @@ type ChildrenVertexLabelingRule struct {
 	CurrentType string
 	ChildType   string
 	ResultLabel string
+	Exclusive   bool
 }
 
 func (r ChildrenVertexLabelingRule) ApplyRule(v *Vertex, cID string) (bool, error) {
@@ -66,9 +69,9 @@ func (r ChildrenVertexLabelingRule) ApplyRule(v *Vertex, cID string) (bool, erro
 			return nil
 		}
 		if r.ChildType == "" || visitedVertex.Type == r.ChildType {
-			if !visitedVertex.Reserve(r.ResultLabel, cID) {
-				return fmt.Errorf("vertex '%s' already labeled by '%s' for correlationID '%s'",
-					visitedVertex.ID, r.ResultLabel, v.MustGet(r.ResultLabel))
+			if !visitedVertex.ReserveBlock(r.ResultLabel, cID, r.Exclusive) {
+				return fmt.Errorf("vertex '%s' already labeled by '%s' for correlationID '%v'",
+					visitedVertex.ID, r.ResultLabel, v.GetBlock(r.ResultLabel))
 			}
 			applied = true
 		}
@@ -85,6 +88,7 @@ type BrotherVertexLabelingRule struct {
 	ParentType  string
 	BrotherType string
 	ResultLabel string
+	Exclusive   bool
 }
 
 func (r BrotherVertexLabelingRule) ApplyRule(v *Vertex, cID string) (bool, error) {
@@ -108,6 +112,7 @@ func (r BrotherVertexLabelingRule) ApplyRule(v *Vertex, cID string) (bool, error
 	if parent == nil {
 		return false, nil
 	}
-	markChildrenRule := ChildrenVertexLabelingRule{"internal for BrotherVertexLabelingRule", r.ParentType, r.BrotherType, r.ResultLabel}
+	markChildrenRule := ChildrenVertexLabelingRule{"internal for BrotherVertexLabelingRule",
+		r.ParentType, r.BrotherType, r.ResultLabel, r.Exclusive}
 	return markChildrenRule.ApplyRule(parent, cID)
 }

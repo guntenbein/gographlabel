@@ -3,14 +3,14 @@ package gographlabel
 import "errors"
 
 type Vertex struct {
-	VertexData   `json:"data"`
-	LabelStorage `json:"labels"`
-	Parent       *Vertex   `json:"-"`
-	Children     []*Vertex `json:"children"`
+	VertexData  `json:"data"`
+	LabelBroker `json:"labels"`
+	Parent      *Vertex   `json:"-"`
+	Children    []*Vertex `json:"children"`
 }
 
 func NewVertex(id, tp string) *Vertex {
-	return &Vertex{VertexData: VertexData{id, tp}, LabelStorage: make(LabelEnum)}
+	return &Vertex{VertexData: VertexData{id, tp}, LabelBroker: make(LabelBrokerEnum)}
 }
 
 func (v *Vertex) AddChildren(children ...*Vertex) *Vertex {
@@ -85,8 +85,7 @@ type VertexData struct {
 	Type string `json:"type"`
 }
 
-type LabelStorage interface {
-	Get(l string) (string, bool)
-	MustGet(l string) string
-	Reserve(l, forCorrelationID string) bool
+type LabelBroker interface {
+	GetBlock(l string) *Block
+	ReserveBlock(l, forCorrelationID string, exclusive bool) bool
 }

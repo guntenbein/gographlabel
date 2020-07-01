@@ -2,5 +2,7 @@ github.com/guntenbein/gojsonut v0.0.0-20200618062050-35e57f612072 h1:tfv4p3RfdHD
 github.com/guntenbein/gojsonut v0.0.0-20200618062050-35e57f612072/go.mod h1:EdwglMMENZTnpUVsnCTMD7WphoWCcrDX8hcX2QCN2Kc=
 github.com/guntenbein/gojsonut v0.0.0-20200701111720-97ffe7caed9a h1:HGdphBxtIOpGsQwP8eOj/nQu4PBeZ5LjaYmuRF+9QCs=
 github.com/guntenbein/gojsonut v0.0.0-20200701111720-97ffe7caed9a/go.mod h1:EdwglMMENZTnpUVsnCTMD7WphoWCcrDX8hcX2QCN2Kc=
+github.com/guntenbein/gojsonut v0.0.0-20200701155434-2db79ca32167 h1:i2KCdTSYAWzHjpEsa1W7fmJDEJb4sT30olIv2mY6z4A=
+github.com/guntenbein/gojsonut v0.0.0-20200701155434-2db79ca32167/go.mod h1:EdwglMMENZTnpUVsnCTMD7WphoWCcrDX8hcX2QCN2Kc=
 github.com/nsf/jsondiff v0.0.0-20200515183724-f29ed568f4ce h1:RPclfga2SEJmgMmz2k+Mg7cowZ8yv4Trqw9UsJby758=
 github.com/nsf/jsondiff v0.0.0-20200515183724-f29ed568f4ce/go.mod h1:uFMI8w+ref4v2r9jz+c9i1IfIttS/OkmLfrk1jne5hs=

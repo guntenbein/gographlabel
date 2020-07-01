@@ -14,37 +14,36 @@ func initSimpleDefault() (*Vertex, Manager) {
 	ruler.Add(Default,
 		// TODO have a separation by not input action only, but by result label as well
 		// default
-		CurrentVertexLabelingRule{"1.1.1", "", Default},
-		ParentVertexLabelingRule{"1.1.2", "", "UPLOAD_CHANNEL", Default},
-		ChildrenVertexLabelingRule{"1.1.3", "UPLOAD_CHANNEL", "", Default},
-		BrotherVertexLabelingRule{"1.1.4", "", "UPLOAD_CHANNEL", "", Default},
+		CurrentVertexLabelingRule{"1.1.1", "", Default, true},
+		ParentVertexLabelingRule{"1.1.2", "", "UPLOAD_CHANNEL", Default, true},
+		ChildrenVertexLabelingRule{"1.1.3", "UPLOAD_CHANNEL", "", Default, true},
+		BrotherVertexLabelingRule{"1.1.4", "", "UPLOAD_CHANNEL", "", Default, true},
 		// negotiate
 		//CurrentVertexLabelingRule{"1.2.1", "LISTING", Negotiate},
 		//ChildrenVertexLabelingRule{"1.2.2", "UPLOAD_CHANNEL", "LISTING", Negotiate},
 		//BrotherVertexLabelingRule{"1.2.3", "LISTING", "UPLOAD_CHANNEL", "LISTING", Default},
 		// externalAPI
-		ParentVertexLabelingRule{"1.3.1", "", "COMPANY", ExternalAPI},
-		BrotherVertexLabelingRule{"1.3.2", "", "COMPANY", "", ExternalAPI},
+		ParentVertexLabelingRule{"1.3.1", "", "COMPANY", ExternalAPI, false},
 	)
 
 	ruler.Add(Negotiate,
 		// default
 		// -
 		// negotiate
-		CurrentVertexLabelingRule{"2.2.1", "LISTING", Negotiate},
+		CurrentVertexLabelingRule{"2.2.1", "LISTING", Negotiate, true},
 		// externalAPI
-		// -
+		ParentVertexLabelingRule{"2.3.1", "LISTING", "COMPANY", ExternalAPI, false},
 	)
 
 	ruler.Add(ExternalAPI,
 		// default
-		ChildrenVertexLabelingRule{"3.1.1", "COMPANY", "UPLOAD_CHANNEL", Default},
-		ChildrenVertexLabelingRule{"3.1.2", "COMPANY", "LISTING", Default},
-		ChildrenVertexLabelingRule{"3.1.2", "COMPANY", "HOLD", Default},
+		ChildrenVertexLabelingRule{"3.1.1", "COMPANY", "UPLOAD_CHANNEL", Default, false},
+		ChildrenVertexLabelingRule{"3.1.2", "COMPANY", "LISTING", Default, false},
+		ChildrenVertexLabelingRule{"3.1.2", "COMPANY", "HOLD", Default, false},
 		// negotiate
-		ChildrenVertexLabelingRule{"3.2.1", "COMPANY", "LISTING", Negotiate},
+		ChildrenVertexLabelingRule{"3.2.1", "COMPANY", "LISTING", Negotiate, false},
 		// externalAPI
-		CurrentVertexLabelingRule{"2.2.1", "COMPANY", ExternalAPI},
+		CurrentVertexLabelingRule{"2.2.1", "COMPANY", ExternalAPI, true},
 	)
 
 	manager := MakeManager(ruler)
@@ -73,7 +72,12 @@ func TestBlockByDefaultAction(t *testing.T) {
         "type": "COMPANY"
     },
     "labels": {
-        "externalAPI": "process01"
+        "externalAPI": {
+            "CorrelationIds": {
+                "process01": {}
+            },
+            "Exclusive": false
+        }
     },
     "children": [
         {
@@ -82,8 +86,12 @@ func TestBlockByDefaultAction(t *testing.T) {
                 "type": "UPLOAD_CHANNEL"
             },
             "labels": {
-                "default": "process01",
-                "externalAPI": "process01"
+                "default": {
+                    "CorrelationIds": {
+                        "process01": {}
+                    },
+                    "Exclusive": true
+                }
             },
             "children": [
                 {
@@ -92,8 +100,12 @@ func TestBlockByDefaultAction(t *testing.T) {
                         "type": "LISTING"
                     },
                     "labels": {
-                        "default": "process01",
-                        "externalAPI": "process01"
+                        "default": {
+                            "CorrelationIds": {
+                                "process01": {}
+                            },
+                            "Exclusive": true
+                        }
                     },
                     "children": null
                 },
@@ -103,8 +115,12 @@ func TestBlockByDefaultAction(t *testing.T) {
                         "type": "LISTING"
                     },
                     "labels": {
-                        "default": "process01",
-                        "externalAPI": "process01"
+                        "default": {
+                            "CorrelationIds": {
+                                "process01": {}
+                            },
+                            "Exclusive": true
+                        }
                     },
                     "children": null
                 },
@@ -114,8 +130,12 @@ func TestBlockByDefaultAction(t *testing.T) {
                         "type": "HOLD"
                     },
                     "labels": {
-                        "default": "process01",
-                        "externalAPI": "process01"
+                        "default": {
+                            "CorrelationIds": {
+                                "process01": {}
+                            },
+                            "Exclusive": true
+                        }
                     },
                     "children": null
                 }
@@ -128,13 +148,13 @@ func TestBlockByDefaultAction(t *testing.T) {
 		t.Fatalf("error happens, but not expected: %v", err)
 	}
 
-	gojsonut.JsonCompare(t, company, expected, false)
+	gojsonut.JsonCompare(t, company, expected)
 
 	if err := manager.CalculateBlocks(company, BlockOrder{Default, "LISTING01", "process01"}); err != nil {
 		t.Fatalf("error happens, but not expected: %v", err)
 	}
 
-	gojsonut.JsonCompare(t, company, expected, false)
+	gojsonut.JsonCompare(t, company, expected)
 
 }
 
@@ -147,7 +167,14 @@ func TestBlockByNegotiateAction(t *testing.T) {
         "id": "COMPANY01",
         "type": "COMPANY"
     },
-    "labels": {},
+    "labels": {
+        "externalAPI": {
+            "CorrelationIds": {
+                "process01": {}
+            },
+            "Exclusive": false
+        }
+    },
     "children": [
         {
             "data": {
@@ -162,7 +189,12 @@ func TestBlockByNegotiateAction(t *testing.T) {
                         "type": "LISTING"
                     },
                     "labels": {
-                        "negotiate": "process01"
+                        "negotiate": {
+                            "CorrelationIds": {
+                                "process01": {}
+                            },
+                            "Exclusive": true
+                        }
                     },
                     "children": null
                 },
@@ -191,7 +223,7 @@ func TestBlockByNegotiateAction(t *testing.T) {
 		t.Fatalf("error happens, but not expected: %v", err)
 	}
 
-	gojsonut.JsonCompare(t, company, expected, false)
+	gojsonut.JsonCompare(t, company, expected)
 
 }
 
@@ -205,7 +237,12 @@ func TestBlockByExternalAPIAction(t *testing.T) {
         "type": "COMPANY"
     },
     "labels": {
-        "externalAPI": "process01"
+        "externalAPI": {
+            "CorrelationIds": {
+                "process01": {}
+            },
+            "Exclusive": true
+        }
     },
     "children": [
         {
@@ -214,7 +251,12 @@ func TestBlockByExternalAPIAction(t *testing.T) {
                 "type": "UPLOAD_CHANNEL"
             },
             "labels": {
-                "default": "process01"
+                "default": {
+                    "CorrelationIds": {
+                        "process01": {}
+                    },
+                    "Exclusive": false
+                }
             },
             "children": [
                 {
@@ -223,8 +265,18 @@ func TestBlockByExternalAPIAction(t *testing.T) {
                         "type": "LISTING"
                     },
                     "labels": {
-                        "default": "process01",
-                        "negotiate": "process01"
+                        "default": {
+                            "CorrelationIds": {
+                                "process01": {}
+                            },
+                            "Exclusive": false
+                        },
+                        "negotiate": {
+                            "CorrelationIds": {
+                                "process01": {}
+                            },
+                            "Exclusive": false
+                        }
                     },
                     "children": null
                 },
@@ -234,8 +286,18 @@ func TestBlockByExternalAPIAction(t *testing.T) {
                         "type": "LISTING"
                     },
                     "labels": {
-                        "default": "process01",
-                        "negotiate": "process01"
+                        "default": {
+                            "CorrelationIds": {
+                                "process01": {}
+                            },
+                            "Exclusive": false
+                        },
+                        "negotiate": {
+                            "CorrelationIds": {
+                                "process01": {}
+                            },
+                            "Exclusive": false
+                        }
                     },
                     "children": null
                 },
@@ -245,7 +307,12 @@ func TestBlockByExternalAPIAction(t *testing.T) {
                         "type": "HOLD"
                     },
                     "labels": {
-                        "default": "process01"
+                        "default": {
+                            "CorrelationIds": {
+                                "process01": {}
+                            },
+                            "Exclusive": false
+                        }
                     },
                     "children": null
                 }
@@ -258,7 +325,7 @@ func TestBlockByExternalAPIAction(t *testing.T) {
 		t.Fatalf("error happens, but not expected: %v", err)
 	}
 
-	gojsonut.JsonCompare(t, company, expected, false)
+	gojsonut.JsonCompare(t, company, expected)
 
 }
 
@@ -272,7 +339,13 @@ func TestBlockByManyActionsSuccess(t *testing.T) {
         "type": "COMPANY"
     },
     "labels": {
-        "externalAPI": "process02"
+        "externalAPI": {
+            "CorrelationIds": {
+                "process01": {},
+                "process02": {}
+            },
+            "Exclusive": false
+        }
     },
     "children": [
         {
@@ -281,8 +354,12 @@ func TestBlockByManyActionsSuccess(t *testing.T) {
                 "type": "UPLOAD_CHANNEL"
             },
             "labels": {
-                "default": "process02",
-                "externalAPI": "process02"
+                "default": {
+                    "CorrelationIds": {
+                        "process02": {}
+                    },
+                    "Exclusive": true
+                }
             },
             "children": [
                 {
@@ -291,9 +368,18 @@ func TestBlockByManyActionsSuccess(t *testing.T) {
                         "type": "LISTING"
                     },
                     "labels": {
-                        "default": "process02",
-                        "externalAPI": "process02",
-                        "negotiate": "process01"
+                        "default": {
+                            "CorrelationIds": {
+                                "process02": {}
+                            },
+                            "Exclusive": true
+                        },
+                        "negotiate": {
+                            "CorrelationIds": {
+                                "process01": {}
+                            },
+                            "Exclusive": true
+                        }
                     },
                     "children": null
                 },
@@ -303,8 +389,12 @@ func TestBlockByManyActionsSuccess(t *testing.T) {
                         "type": "LISTING"
                     },
                     "labels": {
-                        "default": "process02",
-                        "externalAPI": "process02"
+                        "default": {
+                            "CorrelationIds": {
+                                "process02": {}
+                            },
+                            "Exclusive": true
+                        }
                     },
                     "children": null
                 },
@@ -314,8 +404,12 @@ func TestBlockByManyActionsSuccess(t *testing.T) {
                         "type": "HOLD"
                     },
                     "labels": {
-                        "default": "process02",
-                        "externalAPI": "process02"
+                        "default": {
+                            "CorrelationIds": {
+                                "process02": {}
+                            },
+                            "Exclusive": true
+                        }
                     },
                     "children": null
                 }
@@ -332,11 +426,11 @@ func TestBlockByManyActionsSuccess(t *testing.T) {
 		t.Fatalf("error happens, but not expected: %v", err)
 	}
 
-	gojsonut.JsonCompare(t, company, expected, false)
+	gojsonut.JsonCompare(t, company, expected)
 
 }
 
-func TestBlockByManyActionsFail01(t *testing.T) {
+func TestBlockByIncompatibleActionsFail01(t *testing.T) {
 	company, manager := initSimpleDefault()
 
 	if err := manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "COMPANY01", "process01"}); err != nil {
@@ -349,7 +443,7 @@ func TestBlockByManyActionsFail01(t *testing.T) {
 
 }
 
-func TestBlockByManyActionsFail02(t *testing.T) {
+func TestBlockByIncompatibleActionsFail02(t *testing.T) {
 	company, manager := initSimpleDefault()
 
 	if err := manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "COMPANY01", "process01"}); err != nil {
@@ -358,6 +452,19 @@ func TestBlockByManyActionsFail02(t *testing.T) {
 
 	if err := manager.CalculateBlocks(company, BlockOrder{Negotiate, "LISTING01", "process02"}); err == nil {
 		t.Fatalf("error does not happen, but expected")
+	}
+
+}
+
+func TestBlockTwiceSameAction(t *testing.T) {
+	company, manager := initSimpleDefault()
+
+	if err := manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "COMPANY01", "process01"}); err != nil {
+		t.Fatalf("error happens, but not expected: %v", err)
+	}
+
+	if err := manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "COMPANY01", "process01"}); err != nil {
+		t.Fatalf("error happens, but not expected: %v", err)
 	}
 
 }
