@@ -1,7 +1,7 @@
 package gographlabel
 
 type Rule interface {
-	ApplyRule(toVertex *Vertex) (bool, error)
+	ApplyRule(toVertex *Vertex, correlationId string) (bool, error)
 }
 
 type Ruler map[string][]Rule
@@ -33,7 +33,7 @@ func (m Manager) CalculateBlocks(hierarchy *Vertex, orders ...BlockOrder) error 
 		if rules == nil || len(rules) == 0 {
 			continue
 		}
-		orderedVertex, err := hierarchy.FindById(o.ID)
+		orderedVertex, err := hierarchy.FindById(o.VertexID)
 		if err != nil {
 			return err
 		}
@@ -41,13 +41,16 @@ func (m Manager) CalculateBlocks(hierarchy *Vertex, orders ...BlockOrder) error 
 			continue
 		}
 		for _, r := range rules {
-			r.ApplyRule(orderedVertex)
+			if _, err = r.ApplyRule(orderedVertex, o.CorrelationID); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
 type BlockOrder struct {
-	Action string
-	ID     string
+	Action        string
+	VertexID      string
+	CorrelationID string
 }

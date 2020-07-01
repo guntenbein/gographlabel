@@ -1,16 +1,21 @@
 package gographlabel
 
+import "fmt"
+
 type CurrentVertexLabelingRule struct {
 	Name        string
 	CurrentType string
 	ResultLabel string
 }
 
-func (r CurrentVertexLabelingRule) ApplyRule(v *Vertex) (bool, error) {
+func (r CurrentVertexLabelingRule) ApplyRule(v *Vertex, cID string) (bool, error) {
 	if r.CurrentType != "" && r.CurrentType != v.Type {
 		return false, nil
 	}
-	v.Add(Label(r.ResultLabel))
+	if !v.Reserve(r.ResultLabel, cID) {
+		return false, fmt.Errorf("vertex '%s' already labeled by '%s' for correlationID '%s'",
+			v.ID, r.ResultLabel, v.MustGet(r.ResultLabel))
+	}
 	return true, nil
 }
 
@@ -21,19 +26,23 @@ type ParentVertexLabelingRule struct {
 	ResultLabel string
 }
 
-func (r ParentVertexLabelingRule) ApplyRule(v *Vertex) (bool, error) {
+func (r ParentVertexLabelingRule) ApplyRule(v *Vertex, cID string) (bool, error) {
 	if r.CurrentType != "" && r.CurrentType != v.Type {
 		return false, nil
 	}
 	applied := false
-	if err := v.ApplyParents(func(visitedVertex *Vertex) {
+	if err := v.ApplyParents(func(visitedVertex *Vertex) error {
 		if visitedVertex == nil {
-			return
+			return nil
 		}
 		if r.ParentType == "" || visitedVertex.Type == r.ParentType {
-			visitedVertex.Add(Label(r.ResultLabel))
+			if !visitedVertex.Reserve(r.ResultLabel, cID) {
+				return fmt.Errorf("vertex '%s' already labeled by '%s' for correlationID '%s'",
+					visitedVertex.ID, r.ResultLabel, v.MustGet(r.ResultLabel))
+			}
 			applied = true
 		}
+		return nil
 	}); err != nil {
 		return false, err
 	}
@@ -47,19 +56,23 @@ type ChildrenVertexLabelingRule struct {
 	ResultLabel string
 }
 
-func (r ChildrenVertexLabelingRule) ApplyRule(v *Vertex) (bool, error) {
+func (r ChildrenVertexLabelingRule) ApplyRule(v *Vertex, cID string) (bool, error) {
 	if r.CurrentType != "" && r.CurrentType != v.Type {
 		return false, nil
 	}
 	applied := false
-	if err := v.ApplyChildren(func(visitedVertex *Vertex) {
+	if err := v.ApplyChildren(func(visitedVertex *Vertex) error {
 		if visitedVertex == nil {
-			return
+			return nil
 		}
 		if r.ChildType == "" || visitedVertex.Type == r.ChildType {
-			visitedVertex.Add(Label(r.ResultLabel))
+			if !visitedVertex.Reserve(r.ResultLabel, cID) {
+				return fmt.Errorf("vertex '%s' already labeled by '%s' for correlationID '%s'",
+					visitedVertex.ID, r.ResultLabel, v.MustGet(r.ResultLabel))
+			}
 			applied = true
 		}
+		return nil
 	}); err != nil {
 		return false, err
 	}
@@ -74,20 +87,21 @@ type BrotherVertexLabelingRule struct {
 	ResultLabel string
 }
 
-func (r BrotherVertexLabelingRule) ApplyRule(v *Vertex) (bool, error) {
+func (r BrotherVertexLabelingRule) ApplyRule(v *Vertex, cID string) (bool, error) {
 	if r.CurrentType != "" && r.CurrentType != v.Type {
 		return false, nil
 	}
 	// Find right parent
 	var parent *Vertex
-	if err := v.ApplyParents(func(visitedVertex *Vertex) {
+	if err := v.ApplyParents(func(visitedVertex *Vertex) error {
 		if visitedVertex == nil || visitedVertex == v {
-			return
+			return nil
 		}
 		if r.ParentType == "" || visitedVertex.Type == r.ParentType {
 			parent = visitedVertex
-			return
+			return nil
 		}
+		return nil
 	}); err != nil {
 		return false, err
 	}
@@ -95,5 +109,5 @@ func (r BrotherVertexLabelingRule) ApplyRule(v *Vertex) (bool, error) {
 		return false, nil
 	}
 	markChildrenRule := ChildrenVertexLabelingRule{"internal for BrotherVertexLabelingRule", r.ParentType, r.BrotherType, r.ResultLabel}
-	return markChildrenRule.ApplyRule(parent)
+	return markChildrenRule.ApplyRule(parent, cID)
 }

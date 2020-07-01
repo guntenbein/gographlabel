@@ -19,9 +19,9 @@ func initSimpleDefault() (*Vertex, Manager) {
 		ChildrenVertexLabelingRule{"1.1.3", "UPLOAD_CHANNEL", "", Default},
 		BrotherVertexLabelingRule{"1.1.4", "", "UPLOAD_CHANNEL", "", Default},
 		// negotiate
-		CurrentVertexLabelingRule{"1.2.1", "LISTING", Negotiate},
-		ChildrenVertexLabelingRule{"1.2.2", "UPLOAD_CHANNEL", "LISTING", Negotiate},
-		BrotherVertexLabelingRule{"1.2.3", "LISTING", "UPLOAD_CHANNEL", "LISTING", Default},
+		//CurrentVertexLabelingRule{"1.2.1", "LISTING", Negotiate},
+		//ChildrenVertexLabelingRule{"1.2.2", "UPLOAD_CHANNEL", "LISTING", Negotiate},
+		//BrotherVertexLabelingRule{"1.2.3", "LISTING", "UPLOAD_CHANNEL", "LISTING", Default},
 		// externalAPI
 		ParentVertexLabelingRule{"1.3.1", "", "COMPANY", ExternalAPI},
 		BrotherVertexLabelingRule{"1.3.2", "", "COMPANY", "", ExternalAPI},
@@ -52,11 +52,11 @@ func initSimpleDefault() (*Vertex, Manager) {
 }
 
 func makeCompany() *Vertex {
-	company := NewVertex("1", "COMPANY")
-	uploadChannel := NewVertex("2", "UPLOAD_CHANNEL")
-	listing1 := NewVertex("3", "LISTING")
-	listing2 := NewVertex("4", "LISTING")
-	hold := NewVertex("5", "HOLD")
+	company := NewVertex("COMPANY01", "COMPANY")
+	uploadChannel := NewVertex("UPLOAD_CHANNEL01", "UPLOAD_CHANNEL")
+	listing1 := NewVertex("LISTING01", "LISTING")
+	listing2 := NewVertex("LISTING02", "LISTING")
+	hold := NewVertex("HOLD01", "HOLD")
 
 	// relate them in both directions
 	company.AddChildren(uploadChannel.AddChildren(listing1, listing2, hold))
@@ -68,69 +68,71 @@ func TestBlockByDefaultAction(t *testing.T) {
 
 	expected := `
 {
-  "data": {
-    "id": "1",
-    "type": "COMPANY"
-  },
-  "labels": {
-    "externalAPI": {}
-  },
-  "children": [
-    {
-      "data": {
-        "id": "2",
-        "type": "UPLOAD_CHANNEL"
-      },
-      "labels": {
-        "default": {},
-        "externalAPI": {}
-      },
-      "children": [
+    "data": {
+        "id": "COMPANY01",
+        "type": "COMPANY"
+    },
+    "labels": {
+        "externalAPI": "process01"
+    },
+    "children": [
         {
-          "data": {
-            "id": "3",
-            "type": "LISTING"
-          },
-          "labels": {
-            "default": {},
-            "externalAPI": {},
-            "negotiate": {}
-          },
-          "children": null
-        },
-        {
-          "data": {
-            "id": "4",
-            "type": "LISTING"
-          },
-          "labels": {
-            "default": {},
-            "externalAPI": {},
-            "negotiate": {}
-          },
-          "children": null
-        },
-        {
-          "data": {
-            "id": "5",
-            "type": "HOLD"
-          },
-          "labels": {
-            "default": {},
-            "externalAPI": {}
-          },
-          "children": null
+            "data": {
+                "id": "UPLOAD_CHANNEL01",
+                "type": "UPLOAD_CHANNEL"
+            },
+            "labels": {
+                "default": "process01",
+                "externalAPI": "process01"
+            },
+            "children": [
+                {
+                    "data": {
+                        "id": "LISTING01",
+                        "type": "LISTING"
+                    },
+                    "labels": {
+                        "default": "process01",
+                        "externalAPI": "process01"
+                    },
+                    "children": null
+                },
+                {
+                    "data": {
+                        "id": "LISTING02",
+                        "type": "LISTING"
+                    },
+                    "labels": {
+                        "default": "process01",
+                        "externalAPI": "process01"
+                    },
+                    "children": null
+                },
+                {
+                    "data": {
+                        "id": "HOLD01",
+                        "type": "HOLD"
+                    },
+                    "labels": {
+                        "default": "process01",
+                        "externalAPI": "process01"
+                    },
+                    "children": null
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }`
 
-	manager.CalculateBlocks(company, BlockOrder{Default, "2"})
+	if err := manager.CalculateBlocks(company, BlockOrder{Default, "UPLOAD_CHANNEL01", "process01"}); err != nil {
+		t.Fatalf("error happens, but not expected: %v", err)
+	}
 
 	gojsonut.JsonCompare(t, company, expected, false)
 
-	manager.CalculateBlocks(company, BlockOrder{Default, "3"})
+	if err := manager.CalculateBlocks(company, BlockOrder{Default, "LISTING01", "process01"}); err != nil {
+		t.Fatalf("error happens, but not expected: %v", err)
+	}
 
 	gojsonut.JsonCompare(t, company, expected, false)
 
@@ -141,51 +143,53 @@ func TestBlockByNegotiateAction(t *testing.T) {
 
 	expected := `
 {
-  "data": {
-    "id": "1",
-    "type": "COMPANY"
-  },
-  "labels": {},
-  "children": [
-    {
-      "data": {
-        "id": "2",
-        "type": "UPLOAD_CHANNEL"
-      },
-      "labels": {},
-      "children": [
+    "data": {
+        "id": "COMPANY01",
+        "type": "COMPANY"
+    },
+    "labels": {},
+    "children": [
         {
-          "data": {
-            "id": "3",
-            "type": "LISTING"
-          },
-          "labels": {
-            "negotiate": {}
-          },
-          "children": null
-        },
-        {
-          "data": {
-            "id": "4",
-            "type": "LISTING"
-          },
-          "labels": {},
-          "children": null
-        },
-        {
-          "data": {
-            "id": "5",
-            "type": "HOLD"
-          },
-          "labels": {},
-          "children": null
+            "data": {
+                "id": "UPLOAD_CHANNEL01",
+                "type": "UPLOAD_CHANNEL"
+            },
+            "labels": {},
+            "children": [
+                {
+                    "data": {
+                        "id": "LISTING01",
+                        "type": "LISTING"
+                    },
+                    "labels": {
+                        "negotiate": "process01"
+                    },
+                    "children": null
+                },
+                {
+                    "data": {
+                        "id": "LISTING02",
+                        "type": "LISTING"
+                    },
+                    "labels": {},
+                    "children": null
+                },
+                {
+                    "data": {
+                        "id": "HOLD01",
+                        "type": "HOLD"
+                    },
+                    "labels": {},
+                    "children": null
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }`
 
-	manager.CalculateBlocks(company, BlockOrder{Negotiate, "3"})
+	if err := manager.CalculateBlocks(company, BlockOrder{Negotiate, "LISTING01", "process01"}); err != nil {
+		t.Fatalf("error happens, but not expected: %v", err)
+	}
 
 	gojsonut.JsonCompare(t, company, expected, false)
 
@@ -196,62 +200,164 @@ func TestBlockByExternalAPIAction(t *testing.T) {
 
 	expected := `
 {
-  "data": {
-    "id": "1",
-    "type": "COMPANY"
-  },
-  "labels": {
-    "externalAPI": {}
-  },
-  "children": [
-    {
-      "data": {
-        "id": "2",
-        "type": "UPLOAD_CHANNEL"
-      },
-      "labels": {
-        "default": {}
-      },
-      "children": [
+    "data": {
+        "id": "COMPANY01",
+        "type": "COMPANY"
+    },
+    "labels": {
+        "externalAPI": "process01"
+    },
+    "children": [
         {
-          "data": {
-            "id": "3",
-            "type": "LISTING"
-          },
-          "labels": {
-            "default": {},
-            "negotiate": {}
-          },
-          "children": null
-        },
-        {
-          "data": {
-            "id": "4",
-            "type": "LISTING"
-          },
-          "labels": {
-            "default": {},
-            "negotiate": {}
-          },
-          "children": null
-        },
-        {
-          "data": {
-            "id": "5",
-            "type": "HOLD"
-          },
-          "labels": {
-            "default": {}
-          },
-          "children": null
+            "data": {
+                "id": "UPLOAD_CHANNEL01",
+                "type": "UPLOAD_CHANNEL"
+            },
+            "labels": {
+                "default": "process01"
+            },
+            "children": [
+                {
+                    "data": {
+                        "id": "LISTING01",
+                        "type": "LISTING"
+                    },
+                    "labels": {
+                        "default": "process01",
+                        "negotiate": "process01"
+                    },
+                    "children": null
+                },
+                {
+                    "data": {
+                        "id": "LISTING02",
+                        "type": "LISTING"
+                    },
+                    "labels": {
+                        "default": "process01",
+                        "negotiate": "process01"
+                    },
+                    "children": null
+                },
+                {
+                    "data": {
+                        "id": "HOLD01",
+                        "type": "HOLD"
+                    },
+                    "labels": {
+                        "default": "process01"
+                    },
+                    "children": null
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }`
 
-	manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "1"})
+	if err := manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "COMPANY01", "process01"}); err != nil {
+		t.Fatalf("error happens, but not expected: %v", err)
+	}
 
 	gojsonut.JsonCompare(t, company, expected, false)
+
+}
+
+func TestBlockByManyActionsSuccess(t *testing.T) {
+	company, manager := initSimpleDefault()
+
+	expected := `
+{
+    "data": {
+        "id": "COMPANY01",
+        "type": "COMPANY"
+    },
+    "labels": {
+        "externalAPI": "process02"
+    },
+    "children": [
+        {
+            "data": {
+                "id": "UPLOAD_CHANNEL01",
+                "type": "UPLOAD_CHANNEL"
+            },
+            "labels": {
+                "default": "process02",
+                "externalAPI": "process02"
+            },
+            "children": [
+                {
+                    "data": {
+                        "id": "LISTING01",
+                        "type": "LISTING"
+                    },
+                    "labels": {
+                        "default": "process02",
+                        "externalAPI": "process02",
+                        "negotiate": "process01"
+                    },
+                    "children": null
+                },
+                {
+                    "data": {
+                        "id": "LISTING02",
+                        "type": "LISTING"
+                    },
+                    "labels": {
+                        "default": "process02",
+                        "externalAPI": "process02"
+                    },
+                    "children": null
+                },
+                {
+                    "data": {
+                        "id": "HOLD01",
+                        "type": "HOLD"
+                    },
+                    "labels": {
+                        "default": "process02",
+                        "externalAPI": "process02"
+                    },
+                    "children": null
+                }
+            ]
+        }
+    ]
+}`
+
+	if err := manager.CalculateBlocks(company, BlockOrder{Negotiate, "LISTING01", "process01"}); err != nil {
+		t.Fatalf("error happens, but not expected: %v", err)
+	}
+
+	if err := manager.CalculateBlocks(company, BlockOrder{Default, "LISTING01", "process02"}); err != nil {
+		t.Fatalf("error happens, but not expected: %v", err)
+	}
+
+	gojsonut.JsonCompare(t, company, expected, false)
+
+}
+
+func TestBlockByManyActionsFail01(t *testing.T) {
+	company, manager := initSimpleDefault()
+
+	if err := manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "COMPANY01", "process01"}); err != nil {
+		t.Fatalf("error happens, but not expected: %v", err)
+	}
+
+	if err := manager.CalculateBlocks(company, BlockOrder{Default, "LISTING01", "process02"}); err == nil {
+		t.Fatalf("error does not happen, but expected")
+	}
+
+}
+
+func TestBlockByManyActionsFail02(t *testing.T) {
+	company, manager := initSimpleDefault()
+
+	if err := manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "COMPANY01", "process01"}); err != nil {
+		t.Fatalf("error happens, but not expected: %v", err)
+	}
+
+	if err := manager.CalculateBlocks(company, BlockOrder{Negotiate, "LISTING01", "process02"}); err == nil {
+		t.Fatalf("error does not happen, but expected")
+	}
 
 }

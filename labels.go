@@ -1,16 +1,22 @@
 package gographlabel
 
-type LabelEnum map[Label]struct{}
+type LabelEnum map[string]string
 
-func (le LabelEnum) Contains(l Label) bool {
-	_, ok := le[l]
-	return ok
+func (le LabelEnum) Get(l string) (string, bool) {
+	cID, ok := le[l]
+	return cID, ok
 }
 
-func (le LabelEnum) Add(l Label) bool {
-	if le.Contains(l) {
-		return false
+func (le LabelEnum) MustGet(l string) string {
+	return le[l]
+}
+
+func (le LabelEnum) Reserve(label, correlationID string) bool {
+	if value, ok := le.Get(label); ok {
+		if value != correlationID {
+			return false
+		}
 	}
-	le[l] = struct{}{}
+	le[label] = correlationID
 	return true
 }

@@ -1,5 +1,7 @@
 package gographlabel
 
+import "errors"
+
 type Vertex struct {
 	VertexData   `json:"data"`
 	LabelStorage `json:"labels"`
@@ -28,23 +30,24 @@ func (v *Vertex) AddChildren(children ...*Vertex) *Vertex {
 
 func (v *Vertex) FindById(id string) (*Vertex, error) {
 	var foundVertex *Vertex
-	if err := v.ApplyChildren(func(visitedVertex *Vertex) {
+	if err := v.ApplyChildren(func(visitedVertex *Vertex) error {
 		if visitedVertex.ID == id {
 			foundVertex = visitedVertex
 		}
+		return nil
 	}); err != nil {
 		return nil, err
 	}
 	return foundVertex, nil
 }
 
-func (v *Vertex) ApplyChildren(apply func(visitedVertex *Vertex)) error {
+func (v *Vertex) ApplyChildren(apply func(visitedVertex *Vertex) error) error {
 	exploredVertexes := make(map[VertexData]struct{})
 	queue := []*Vertex{v}
 	return bfs(true, v, queue, exploredVertexes, apply)
 }
 
-func (v *Vertex) ApplyParents(apply func(visitedVertex *Vertex)) error {
+func (v *Vertex) ApplyParents(apply func(visitedVertex *Vertex) error) error {
 	exploredVertexes := make(map[VertexData]struct{})
 	queue := []*Vertex{v}
 	return bfs(false, v, queue, exploredVertexes, apply)
@@ -52,17 +55,19 @@ func (v *Vertex) ApplyParents(apply func(visitedVertex *Vertex)) error {
 
 // bfs - recursive function for implementing bfs for our hierarchy
 // TODO - workers?
-func bfs(down bool, initialVertex *Vertex, queue []*Vertex, exploredVertexes map[VertexData]struct{}, apply func(visitedVertex *Vertex)) error {
+func bfs(down bool, initialVertex *Vertex, queue []*Vertex, exploredVertexes map[VertexData]struct{}, apply func(visitedVertex *Vertex) error) error {
 	//This appends the value of the root of subtree or tree to the result
 	if len(queue) == 0 {
 		return nil
 	}
 	currentV := queue[0]
 	if _, ok := exploredVertexes[currentV.VertexData]; ok {
-		return LoopInHierarchyError
+		return errors.New(LoopInHierarchyError)
 	}
 	exploredVertexes[currentV.VertexData] = struct{}{}
-	apply(currentV)
+	if err := apply(currentV); err != nil {
+		return err
+	}
 	if down {
 		if len(currentV.Children) > 0 {
 			queue = append(queue, currentV.Children...)
@@ -81,8 +86,7 @@ type VertexData struct {
 }
 
 type LabelStorage interface {
-	Contains(l Label) bool
-	Add(l Label) bool
+	Get(l string) (string, bool)
+	MustGet(l string) string
+	Reserve(l, forCorrelationID string) bool
 }
-
-type Label string
