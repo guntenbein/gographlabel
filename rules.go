@@ -2,6 +2,23 @@ package gographlabel
 
 import "fmt"
 
+type CurrentVertexTypeCheckingRule struct {
+	Name                string
+	AllowedCurrentTypes []string
+}
+
+func (r CurrentVertexTypeCheckingRule) ApplyRule(v *Vertex, _ string) (bool, error) {
+	if len(r.AllowedCurrentTypes) == 0 {
+		return false, fmt.Errorf("rule '%s' should have at least one allowed type", r.Name)
+	}
+	for _, allowedType := range r.AllowedCurrentTypes {
+		if allowedType == v.Type {
+			return true, nil
+		}
+	}
+	return false, fmt.Errorf("vertex '%s' does not have allowed type to apply the block, allowed types '%v', vertext type '%s'", v.ID, r.AllowedCurrentTypes, v.Type)
+}
+
 type CurrentVertexLabelingRule struct {
 	Name        string
 	CurrentType string

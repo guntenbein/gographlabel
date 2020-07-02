@@ -6,44 +6,54 @@ import (
 	"github.com/guntenbein/gojsonut"
 )
 
+const Company = "COMPANY"
+const UploadChannel = "UPLOAD_CHANNEL"
+const Listing = "LISTING"
+const Hold = "HOLD"
+
 func initSimpleDefault() (*Vertex, Manager) {
 	company := makeCompany()
 
 	ruler := make(Ruler)
 
 	ruler.Add(Default,
-		// TODO have a separation by not input action only, but by result label as well
+		// vertex type assertion
+		CurrentVertexTypeCheckingRule{"'default' action types accepted", []string{UploadChannel, Listing}},
 		// default
 		CurrentVertexLabelingRule{"1.1.1", "", Default, true},
-		ParentVertexLabelingRule{"1.1.2", "", "UPLOAD_CHANNEL", Default, true},
-		ChildrenVertexLabelingRule{"1.1.3", "UPLOAD_CHANNEL", "", Default, true},
-		BrotherVertexLabelingRule{"1.1.4", "", "UPLOAD_CHANNEL", "", Default, true},
+		ParentVertexLabelingRule{"1.1.2", "", UploadChannel, Default, true},
+		ChildrenVertexLabelingRule{"1.1.3", UploadChannel, "", Default, true},
+		BrotherVertexLabelingRule{"1.1.4", "", UploadChannel, "", Default, true},
 		// negotiate
-		//CurrentVertexLabelingRule{"1.2.1", "LISTING", Negotiate},
-		//ChildrenVertexLabelingRule{"1.2.2", "UPLOAD_CHANNEL", "LISTING", Negotiate},
-		//BrotherVertexLabelingRule{"1.2.3", "LISTING", "UPLOAD_CHANNEL", "LISTING", Default},
+		//CurrentVertexLabelingRule{"1.2.1", Listing, Negotiate},
+		//ChildrenVertexLabelingRule{"1.2.2", UploadChannel, Listing, Negotiate},
+		//BrotherVertexLabelingRule{"1.2.3", Listing, UploadChannel, Listing, Default},
 		// externalAPI
-		ParentVertexLabelingRule{"1.3.1", "", "COMPANY", ExternalAPI, false},
+		ParentVertexLabelingRule{"1.3.1", "", Company, ExternalAPI, false},
 	)
 
 	ruler.Add(Negotiate,
+		// vertex type assertion
+		CurrentVertexTypeCheckingRule{"'negotiate' action types accepted", []string{Listing}},
 		// default
 		// -
 		// negotiate
-		CurrentVertexLabelingRule{"2.2.1", "LISTING", Negotiate, true},
+		CurrentVertexLabelingRule{"2.2.1", Listing, Negotiate, true},
 		// externalAPI
-		ParentVertexLabelingRule{"2.3.1", "LISTING", "COMPANY", ExternalAPI, false},
+		ParentVertexLabelingRule{"2.3.1", Listing, Company, ExternalAPI, false},
 	)
 
 	ruler.Add(ExternalAPI,
+		// vertex type assertion
+		CurrentVertexTypeCheckingRule{"'externalAPI' action types accepted", []string{Company}},
 		// default
-		ChildrenVertexLabelingRule{"3.1.1", "COMPANY", "UPLOAD_CHANNEL", Default, false},
-		ChildrenVertexLabelingRule{"3.1.2", "COMPANY", "LISTING", Default, false},
-		ChildrenVertexLabelingRule{"3.1.2", "COMPANY", "HOLD", Default, false},
+		ChildrenVertexLabelingRule{"3.1.1", Company, UploadChannel, Default, false},
+		ChildrenVertexLabelingRule{"3.1.2", Company, Listing, Default, false},
+		ChildrenVertexLabelingRule{"3.1.2", Company, Hold, Default, false},
 		// negotiate
-		ChildrenVertexLabelingRule{"3.2.1", "COMPANY", "LISTING", Negotiate, false},
+		ChildrenVertexLabelingRule{"3.2.1", Company, Listing, Negotiate, false},
 		// externalAPI
-		CurrentVertexLabelingRule{"2.2.1", "COMPANY", ExternalAPI, true},
+		CurrentVertexLabelingRule{"2.2.1", Company, ExternalAPI, true},
 	)
 
 	manager := MakeManager(ruler)
@@ -51,11 +61,11 @@ func initSimpleDefault() (*Vertex, Manager) {
 }
 
 func makeCompany() *Vertex {
-	company := NewVertex("COMPANY01", "COMPANY")
-	uploadChannel := NewVertex("UPLOAD_CHANNEL01", "UPLOAD_CHANNEL")
-	listing1 := NewVertex("LISTING01", "LISTING")
-	listing2 := NewVertex("LISTING02", "LISTING")
-	hold := NewVertex("HOLD01", "HOLD")
+	company := NewVertex("COMPANY01", Company)
+	uploadChannel := NewVertex("UPLOAD_CHANNEL01", UploadChannel)
+	listing1 := NewVertex("LISTING01", Listing)
+	listing2 := NewVertex("LISTING02", Listing)
+	hold := NewVertex("HOLD01", Hold)
 
 	// relate them in both directions
 	company.AddChildren(uploadChannel.AddChildren(listing1, listing2, hold))
@@ -465,6 +475,41 @@ func TestBlockTwiceSameAction(t *testing.T) {
 
 	if err := manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "COMPANY01", "process01"}); err != nil {
 		t.Fatalf("error happens, but not expected: %v", err)
+	}
+
+}
+
+func TestActionAppliedToWrongType(t *testing.T) {
+	company, manager := initSimpleDefault()
+
+	// default
+	if err := manager.CalculateBlocks(company, BlockOrder{Default, "COMPANY01", "process01"}); err == nil {
+		t.Fatalf("error expected, but doeas not happen")
+	}
+	if err := manager.CalculateBlocks(company, BlockOrder{Default, "HOLD01", "process01"}); err == nil {
+		t.Fatalf("error expected, but doeas not happen")
+	}
+
+	// negotiate
+	if err := manager.CalculateBlocks(company, BlockOrder{Negotiate, "COMPANY01", "process01"}); err == nil {
+		t.Fatalf("error expected, but doeas not happen")
+	}
+	if err := manager.CalculateBlocks(company, BlockOrder{Negotiate, "HOLD01", "process01"}); err == nil {
+		t.Fatalf("error expected, but doeas not happen")
+	}
+	if err := manager.CalculateBlocks(company, BlockOrder{Negotiate, "UPLOAD_CHANNEL01", "process01"}); err == nil {
+		t.Fatalf("error expected, but doeas not happen")
+	}
+
+	// external API
+	if err := manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "LISTING01", "process01"}); err == nil {
+		t.Fatalf("error expected, but doeas not happen")
+	}
+	if err := manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "HOLD01", "process01"}); err == nil {
+		t.Fatalf("error expected, but doeas not happen")
+	}
+	if err := manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "UPLOAD_CHANNEL01", "process01"}); err == nil {
+		t.Fatalf("error expected, but doeas not happen")
 	}
 
 }

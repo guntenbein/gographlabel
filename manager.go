@@ -1,5 +1,7 @@
 package gographlabel
 
+import "fmt"
+
 type Rule interface {
 	ApplyRule(toVertex *Vertex, correlationId string) (bool, error)
 }
@@ -38,6 +40,7 @@ func (m Manager) CalculateBlocks(hierarchy *Vertex, orders ...BlockOrder) error 
 			return err
 		}
 		if orderedVertex == nil {
+			fmt.Printf("vertex id '%s' has not been found for the order %v", o.VertexID, o)
 			continue
 		}
 		for _, r := range rules {
