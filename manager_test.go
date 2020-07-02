@@ -513,3 +513,33 @@ func TestActionAppliedToWrongType(t *testing.T) {
 	}
 
 }
+
+func BenchmarkApplyingDefaultRules(b *testing.B) {
+	company, manager := initSimpleDefault()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if err := manager.CalculateBlocks(company, BlockOrder{Default, "LISTING01", "process01"}); err != nil {
+			b.Fatalf("error happens, but unexpected: %s", err)
+		}
+	}
+}
+
+func BenchmarkApplyingNegotiateRules(b *testing.B) {
+	company, manager := initSimpleDefault()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if err := manager.CalculateBlocks(company, BlockOrder{Negotiate, "LISTING01", "process01"}); err != nil {
+			b.Fatalf("error happens, but unexpected: %s", err)
+		}
+	}
+}
+
+func BenchmarkApplyingExternalAPIRules(b *testing.B) {
+	company, manager := initSimpleDefault()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if err := manager.CalculateBlocks(company, BlockOrder{ExternalAPI, "COMPANY01", "process01"}); err != nil {
+			b.Fatalf("error happens, but unexpected: %s", err)
+		}
+	}
+}
