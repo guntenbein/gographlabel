@@ -9,7 +9,7 @@ type Block struct {
 
 func (le LabelBrokerEnum) GetBlock(label string) *Block {
 	block, ok := le[label]
-	if ok {
+	if ok && block != nil {
 		return block
 	}
 	emptyBlock := Block{make(map[string]struct{}), false}
