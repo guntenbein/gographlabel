@@ -26,6 +26,20 @@ type Service struct {
 	manager           Manager
 }
 
+// MakeService - service constructor
+func MakeService(blockProvider BlockProvider,
+	hierarchyProvider HierarchyProvider,
+	locker HierarchyLocker,
+	manager Manager,
+) Service {
+	return Service{
+		blockProvider:     blockProvider,
+		hierarchyProvider: hierarchyProvider,
+		locker:            locker,
+		manager:           manager,
+	}
+}
+
 type (
 	BlockRequest struct {
 		HierarchyId   string
