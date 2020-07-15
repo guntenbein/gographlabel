@@ -1,17 +1,19 @@
-package gographlabel
+package service
 
 import (
 	"context"
 	"errors"
+
+	"github.com/guntenbein/gographlabel"
 )
 
 type BlockProvider interface {
-	ReadBlocks(hierarchyId string) (blocks []BlockOrder, err error)
-	WriteBlocks(hierarchyId string, blocks []BlockOrder) error
+	ReadBlocks(hierarchyId string) (blocks []gographlabel.BlockOrder, err error)
+	WriteBlocks(hierarchyId string, blocks []gographlabel.BlockOrder) error
 }
 
 type HierarchyProvider interface {
-	ReadHierarchy(hierarchyId string) (hierarchy *Vertex, err error)
+	ReadHierarchy(hierarchyId string) (hierarchy *gographlabel.Vertex, err error)
 }
 
 type HierarchyLocker interface {
@@ -23,14 +25,14 @@ type Service struct {
 	blockProvider     BlockProvider
 	hierarchyProvider HierarchyProvider
 	locker            HierarchyLocker
-	manager           Manager
+	manager           gographlabel.Manager
 }
 
 // MakeService - service constructor
 func MakeService(blockProvider BlockProvider,
 	hierarchyProvider HierarchyProvider,
 	locker HierarchyLocker,
-	manager Manager,
+	manager gographlabel.Manager,
 ) Service {
 	return Service{
 		blockProvider:     blockProvider,
@@ -50,9 +52,9 @@ type (
 )
 
 func (s Service) Block(ctx context.Context, req BlockRequest) error {
-	hierarchy, err := s.hierarchyProvider.ReadHierarchy(req.HierarchyId)
+	hierarchy, _, err := s.getHierarchyVertexValidate(req)
 	if err != nil {
-		return err // wrap
+		return err
 	}
 	s.locker.LockHierarchy(req.HierarchyId)
 	defer s.locker.UnlockHierarchy(req.HierarchyId)
@@ -60,7 +62,7 @@ func (s Service) Block(ctx context.Context, req BlockRequest) error {
 	if err != nil {
 		return err // wrap
 	}
-	arrivedOrder := BlockOrder{req.Action, req.VertexID, req.CorrelationID}
+	arrivedOrder := gographlabel.BlockOrder{req.Action, req.VertexID, req.CorrelationID}
 	resultingBlockOrders := append(blockOrders, arrivedOrder)
 	err = s.manager.CalculateBlocks(hierarchy, resultingBlockOrders...)
 	if err != nil {
@@ -73,11 +75,30 @@ func (s Service) Block(ctx context.Context, req BlockRequest) error {
 	return nil
 }
 
+func (s Service) getHierarchyVertexValidate(req BlockRequest) (hierarchy *gographlabel.Vertex, vertex *gographlabel.Vertex, err error) {
+	hierarchy, err = s.hierarchyProvider.ReadHierarchy(req.HierarchyId)
+	if err != nil {
+		return nil, nil, err // wrap
+	}
+	vertex, err = hierarchy.FindById(req.VertexID)
+	if err != nil {
+		return nil, nil, err // wrap
+	}
+	if vertex == nil {
+		return nil, nil, errors.New("entity not found") // standard entity not found error
+	}
+	return
+}
+
 func (s Service) Unblock(ctx context.Context, req BlockRequest) error {
+	_, _, err := s.getHierarchyVertexValidate(req)
+	if err != nil {
+		return err
+	}
 	s.locker.LockHierarchy(req.HierarchyId)
 	defer s.locker.UnlockHierarchy(req.HierarchyId)
 	blockOrders, err := s.blockProvider.ReadBlocks(req.HierarchyId)
-	resultingBlockOrders := make([]BlockOrder, 0)
+	resultingBlockOrders := make([]gographlabel.BlockOrder, 0)
 	for _, order := range blockOrders {
 		if order.CorrelationID != req.CorrelationID &&
 			order.Action != req.Action &&
@@ -94,17 +115,10 @@ func (s Service) Unblock(ctx context.Context, req BlockRequest) error {
 	return nil
 }
 
-func (s Service) IsBlocked(ctx context.Context, req BlockRequest) (bool, error) {
-	hierarchy, err := s.hierarchyProvider.ReadHierarchy(req.HierarchyId)
+func (s Service) Check(ctx context.Context, req BlockRequest) (bool, error) {
+	hierarchy, vertex, err := s.getHierarchyVertexValidate(req)
 	if err != nil {
-		return false, err // wrap
-	}
-	vertex, err := hierarchy.FindById(req.VertexID)
-	if err != nil {
-		return false, err // wrap
-	}
-	if vertex == nil {
-		return false, nil
+		return false, err
 	}
 	s.locker.LockHierarchy(req.HierarchyId)
 	defer s.locker.UnlockHierarchy(req.HierarchyId)
@@ -131,7 +145,7 @@ type (
 		HierarchyId string
 	}
 	StatusResponse struct {
-		Hierarchy *Vertex
+		Hierarchy *gographlabel.Vertex
 	}
 )
 

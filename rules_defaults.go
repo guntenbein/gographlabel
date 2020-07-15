@@ -1,10 +1,5 @@
 package gographlabel
 
-const Company = "COMPANY"
-const UploadChannel = "UPLOAD_CHANNEL"
-const Listing = "LISTING"
-const Hold = "HOLD"
-
 func DefaultRuler() Ruler {
 	ruler := make(Ruler)
 
